@@ -5,17 +5,11 @@ import { Captions, Download, Loader2, AlertCircle } from "lucide-react";
 import UploadZone from "@/app/components/UploadZone";
 import MediaPlayer, { MediaPlayerHandle } from "@/app/components/MediaPlayer";
 import TranscriptPanel from "@/app/components/TranscriptPanel";
-import { Segment, MediaType } from "@/app/lib/types";
+import { Segment, MediaType, detectMediaType } from "@/app/lib/types";
 import { toSRT, toVTT, downloadFile } from "@/app/lib/exportUtils";
 
 type AppState = "idle" | "uploading" | "done" | "error";
 
-function detectMediaType(file: File): "video" | "audio" {
-  if (file.type.startsWith("video")) return "video";
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-  if (["mp4", "mov", "webm"].includes(ext)) return "video";
-  return "audio";
-}
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -115,7 +109,7 @@ export default function Home() {
           <Captions className="text-indigo-400" size={22} />
           <span className="text-base font-semibold tracking-tight">SubtitleAI</span>
           <span className="ml-1 rounded-full bg-indigo-500/20 px-2 py-0.5 text-xs font-medium text-indigo-300">
-            Powered by Whisper
+            Local · faster-whisper
           </span>
         </div>
       </header>
@@ -254,7 +248,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-zinc-800 py-4 text-center text-xs text-zinc-600">
-        SubtitleAI — AI-powered transcription with OpenAI Whisper
+        SubtitleAI — local AI transcription with faster-whisper
       </footer>
     </div>
   );

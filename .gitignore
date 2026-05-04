@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Python
+backend/.venv/
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/*.pyo
+**/__pycache__/
+*.py[cod]
+
+# faster-whisper / CTranslate2 model cache
+~/.cache/huggingface/

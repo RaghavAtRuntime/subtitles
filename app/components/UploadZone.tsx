@@ -2,30 +2,12 @@
 
 import { useCallback, useState } from "react";
 import { UploadCloud, FileVideo, FileAudio, X } from "lucide-react";
+import { detectMediaType, isValidMediaFile } from "@/app/lib/types";
 
 interface UploadZoneProps {
   onFileSelect: (file: File) => void;
   selectedFile: File | null;
   onClear: () => void;
-}
-
-const ACCEPTED = [
-  "video/mp4",
-  "video/quicktime",
-  "video/webm",
-  "audio/mpeg",
-  "audio/mp3",
-  "audio/wav",
-  "audio/x-wav",
-  "audio/mp4",
-  "audio/x-m4a",
-];
-
-function isValidFile(file: File): boolean {
-  if (ACCEPTED.includes(file.type)) return true;
-  // fallback: check extension
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-  return ["mp4", "mov", "webm", "mp3", "wav", "m4a"].includes(ext);
 }
 
 export default function UploadZone({ onFileSelect, selectedFile, onClear }: UploadZoneProps) {
@@ -34,7 +16,7 @@ export default function UploadZone({ onFileSelect, selectedFile, onClear }: Uplo
 
   const handleFile = useCallback(
     (file: File) => {
-      if (!isValidFile(file)) {
+      if (!isValidMediaFile(file)) {
         setError("Unsupported file type. Please upload .mp4, .mov, .webm, .mp3, .wav, or .m4a");
         return;
       }
@@ -63,7 +45,7 @@ export default function UploadZone({ onFileSelect, selectedFile, onClear }: Uplo
   );
 
   if (selectedFile) {
-    const isVideo = selectedFile.type.startsWith("video") || ["mp4", "mov", "webm"].includes(selectedFile.name.split(".").pop()?.toLowerCase() ?? "");
+    const isVideo = detectMediaType(selectedFile) === "video";
     const Icon = isVideo ? FileVideo : FileAudio;
     const sizeMB = (selectedFile.size / 1024 / 1024).toFixed(2);
 

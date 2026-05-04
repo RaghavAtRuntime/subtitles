@@ -1,36 +1,131 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SubtitleAI
 
-## Getting Started
+A fully self-contained, local AI transcription web app.  
+Upload any video or audio file → get accurate, synchronized subtitles → export as SRT or VTT.
 
-First, run the development server:
+**No external API keys required.** Everything runs on your machine using [faster-whisper](https://github.com/SYSTRAN/faster-whisper).
 
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 16 (App Router) · TypeScript · Tailwind CSS |
+| Icons | Lucide React |
+| Backend | Python · FastAPI · faster-whisper (CTranslate2 Whisper) |
+| Audio extraction | ffmpeg |
+
+---
+
+## Prerequisites
+
+- **Node.js** ≥ 18
+- **Python** ≥ 3.9
+- **ffmpeg** — required for extracting audio from video files (MP4, MOV, WEBM)
+
+Install ffmpeg:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# macOS
+brew install ffmpeg
+
+# Ubuntu / Debian
+sudo apt install ffmpeg
+
+# Windows (winget)
+winget install ffmpeg
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1. Clone & install frontend deps
 
-## Learn More
+```bash
+git clone https://github.com/RaghavAtRuntime/subtitles.git
+cd subtitles
+npm install
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 2. Set up the Python backend
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 3. Start both services
 
-## Deploy on Vercel
+**Terminal 1 — Python backend:**
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+cd backend
+source .venv/bin/activate
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Terminal 2 — Next.js frontend:**
+
+```bash
+# from repo root
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+---
+
+## Configuration
+
+| Environment variable | Default | Description |
+|---------------------|---------|-------------|
+| `WHISPER_MODEL` | `base` | Model size: `tiny` · `base` · `small` · `medium` · `large-v3` |
+| `WHISPER_DEVICE` | `cpu` | `cpu` or `cuda` (NVIDIA GPU) |
+| `WHISPER_COMPUTE` | `int8` | Quantisation: `int8` · `float16` · `float32` |
+| `BACKEND_URL` | `http://localhost:8000` | URL the Next.js app uses to reach the Python server |
+
+Set backend variables in your shell before starting uvicorn:
+```bash
+WHISPER_MODEL=small uvicorn main:app --port 8000
+```
+
+Set `BACKEND_URL` in a `.env.local` file at the repo root if you host the backend elsewhere:
+```
+BACKEND_URL=http://my-server:8000
+```
+
+---
+
+## Features
+
+- **Drag & drop** file upload with visual feedback
+- Supports **MP4, MOV, WEBM** (video) and **MP3, WAV, M4A** (audio)
+- Real-time **synchronized transcript** — active segment highlights as the media plays
+- **Click any segment** to jump to that point in the player
+- **Auto-scroll** keeps the active segment centred in the transcript panel
+- **Caption overlay** on the video player
+- **Export SRT / VTT** subtitles with one click
+- Dark-mode UI — no external fonts or CDN dependencies
+
+---
+
+## Architecture
+
+```
+Browser (Next.js)
+   │  POST /api/transcribe  (multipart file)
+   ▼
+Next.js Route Handler  ── proxy ──►  FastAPI  (localhost:8000)
+                                         │
+                                     faster-whisper
+                                         │
+                                     returns segments JSON
+   ◄──────────────────────────────────────
+   { segments: [{ id, start, end, text }], language }
+```
+
+The Next.js API route acts as a thin proxy, forwarding the uploaded file to the Python backend and returning the JSON response.  
+This keeps CORS simple and allows the backend URL to be changed via environment variable.

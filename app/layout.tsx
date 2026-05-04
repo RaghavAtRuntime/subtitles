@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "SubtitleAI — AI-Powered Transcription",
-  description: "Upload a video or audio file and get accurate, synchronized subtitles powered by OpenAI Whisper.",
+  description: "Upload a video or audio file and get accurate, synchronized subtitles powered by faster-whisper — fully local, no API key required.",
 };
 
 export default function RootLayout({

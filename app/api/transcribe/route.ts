@@ -1,60 +1,52 @@
-import OpenAI from "openai";
-import { Segment } from "@/app/lib/types";
-
 export const runtime = "nodejs";
+
+const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export async function POST(request: Request) {
   try {
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const formData = await request.formData();
-    const file = formData.get("file");
+    const incomingForm = await request.formData();
+    const file = incomingForm.get("file");
 
     if (!file || !(file instanceof File)) {
       return Response.json({ error: "No file provided." }, { status: 400 });
     }
 
-    const allowedTypes = [
-      "video/mp4",
-      "video/quicktime",
-      "video/webm",
-      "audio/mpeg",
-      "audio/mp3",
-      "audio/wav",
-      "audio/x-wav",
-      "audio/mp4",
-      "audio/x-m4a",
-    ];
+    // Forward the file to the Python backend
+    const outgoingForm = new FormData();
+    outgoingForm.append("file", file, file.name);
 
-    if (!allowedTypes.includes(file.type) && file.type !== "") {
-      // Allow if type is empty (browser may not detect type for some formats)
+    let backendRes: Response;
+    try {
+      backendRes = await fetch(`${BACKEND_URL}/transcribe`, {
+        method: "POST",
+        body: outgoingForm,
+      });
+    } catch {
+      return Response.json(
+        {
+          error:
+            "Could not reach the transcription backend. " +
+            "Make sure the Python server is running: `uvicorn main:app --port 8000` (inside the backend/ folder).",
+        },
+        { status: 503 }
+      );
     }
 
-    const response = await openai.audio.transcriptions.create({
-      file: file,
-      model: "whisper-1",
-      response_format: "verbose_json",
-      timestamp_granularities: ["segment"],
-    });
+    if (!backendRes.ok) {
+      let detail = "Transcription failed.";
+      try {
+        const errBody = await backendRes.json();
+        detail = errBody.detail ?? errBody.error ?? detail;
+      } catch {
+        /* ignore parse error */
+      }
+      return Response.json({ error: detail }, { status: backendRes.status });
+    }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = response as any;
-    const rawSegments: Array<{
-      id?: number;
-      start: number;
-      end: number;
-      text: string;
-    }> = raw.segments ?? [];
-
-    const segments: Segment[] = rawSegments.map((seg, index) => ({
-      id: seg.id ?? index,
-      start: seg.start,
-      end: seg.end,
-      text: seg.text,
-    }));
-
-    return Response.json({ segments, language: raw.language ?? null });
+    const data = await backendRes.json();
+    return Response.json(data);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Transcription failed.";
+    const message = err instanceof Error ? err.message : "An unexpected error occurred.";
     return Response.json({ error: message }, { status: 500 });
   }
 }
